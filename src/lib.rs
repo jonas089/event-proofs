@@ -3,6 +3,7 @@ mod types;
 
 use alloy::{
     consensus::ReceiptWithBloom,
+    hex,
     providers::{Provider, ProviderBuilder},
     rpc::types::TransactionReceipt,
 };
@@ -108,12 +109,15 @@ impl EthereumReceiptProof {
         let event_decoded: SimpleEvent =
             SimpleEvent::abi_decode(&receipt.receipt.logs.get(index).unwrap().data.data).unwrap();
 
+        let event_topis = receipt.receipt.logs.get(index).unwrap().data.topics();
+
         println!(
-            "Event decoded: {:?}",
+            "Event decoded: {:?}, topic (fist only): {:?}",
             &SimpleEventRs {
                 amount: *event_decoded.amount.as_limbs().first().unwrap(),
                 address: event_decoded.account.to_string()
-            }
+            },
+            hex::encode(event_topis.first().unwrap())
         );
 
         match result {
