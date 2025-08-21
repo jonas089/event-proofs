@@ -2,18 +2,17 @@ mod helpers;
 mod types;
 
 use alloy::{
-    consensus::ReceiptWithBloom,
-    hex,
+    consensus::{ReceiptEnvelope, ReceiptWithBloom, TxReceipt},
     providers::{Provider, ProviderBuilder},
     rpc::types::TransactionReceipt,
 };
 use alloy_primitives::FixedBytes;
 use alloy_rlp::{self};
-use alloy_sol_types::{SolType, sol};
+use alloy_sol_types::{SolEvent, SolType, sol};
 use alloy_trie::proof::verify_proof;
 use alloy_trie::{HashBuilder, Nibbles, proof::ProofRetainer, root::adjust_index_for_rlp};
 use anyhow::{Context, Ok, Result};
-use std::str::FromStr;
+use std::{io::Read, str::FromStr};
 use url::Url;
 
 use crate::{helpers::encode_receipt, types::EthereumReceiptProof};
@@ -25,7 +24,6 @@ sol! {
         address account;
     }
 }
-
 pub struct MerkleProver {
     pub provider: String,
 }
@@ -43,6 +41,9 @@ impl MerkleProver {
             ))
             .await?
             .context("Failed to get block receipts")?;
+        if receipts.is_empty() {
+            anyhow::bail!("Block {} has no receipts", height);
+        }
         let retainer =
             ProofRetainer::new(vec![Nibbles::unpack(alloy_rlp::encode_fixed_size(&index))]);
         let mut hb: HashBuilder = HashBuilder::default().with_proof_retainer(retainer);
@@ -102,23 +103,49 @@ impl EthereumReceiptProof {
             proof_nodes.iter(),
         );
 
+        println!("value: {:?}", &self.value);
         // decode the ReceiptWithBloom
-        let receipt: ReceiptWithBloom = alloy_rlp::decode_exact(&self.value).unwrap();
+        let receipt_envelope: ReceiptEnvelope = alloy_rlp::decode_exact(&self.value).unwrap();
 
+        match receipt_envelope {
+            ReceiptEnvelope::Legacy(r) => {
+                println!("Legacy");
+                let log = r.logs().get(0).unwrap();
+                println!("Log: {:?}", &log);
+                let log_decoded = SimpleEvent::abi_decode(&log.data.data)?;
+                let log_decoded_rs = &SimpleEventRs {
+                    amount: *log_decoded.amount.as_limbs().first().unwrap(),
+                    address: log_decoded.account.to_string(),
+                };
+                println!("Raw Event: {:?}", log_decoded_rs);
+            }
+            ReceiptEnvelope::Eip1559(r) => {
+                println!("Eip1559")
+            }
+            ReceiptEnvelope::Eip2930(r) => {
+                println!("Eip2930")
+            }
+            ReceiptEnvelope::Eip4844(r) => {
+                println!("Eip4844")
+            }
+            ReceiptEnvelope::Eip7702(r) => {
+                println!("Eip7702")
+            }
+        }
         // decode raw event
-        let event_decoded: SimpleEvent =
+        /*let event_decoded: SimpleEvent =
             SimpleEvent::abi_decode(&receipt.receipt.logs.get(index).unwrap().data.data).unwrap();
 
-        let event_topis = receipt.receipt.logs.get(index).unwrap().data.topics();
+        let event_topis = receipt.receipt.logs.get(index).unwrap().data.topics();*/
 
-        println!(
+        /*println!(
             "Event decoded: {:?}, topic (fist only): {:?}",
             &SimpleEventRs {
                 amount: *event_decoded.amount.as_limbs().first().unwrap(),
                 address: event_decoded.account.to_string()
             },
             hex::encode(event_topis.first().unwrap())
-        );
+        );*/
 
         match result {
             core::result::Result::Ok(_) => Ok(true),
@@ -140,10 +167,10 @@ mod tests {
 
         // index 0 if you want to test just one (the first) event, use block number from start.sh output for testing as "height" and get the corresponding root for verification
         let height = 2;
-        let index = 0;
+        let index = 1;
         let receipts_proof = merkle_prover.get_proof(index, height).await.unwrap();
         let verification_root =
-            "0x143a3e32d78668040530ce3420016e16c5f239047bd5ad67c573e5f7a0dbb821";
+            "0x64f82f01e9d660504af18fdb6da345aa84e25d10e46ecd2f34a7fb453b1873be";
         receipts_proof
             .verify(&hex::decode(verification_root).unwrap(), index)
             .expect("Failed to verify");

@@ -27,10 +27,10 @@
       "type": "0x2",
       "transactionHash": "0xd01f1fc3435e9c11aa18d9e9d482ad75ed57259676c6e39a66e765fb84078da1",
       "transactionIndex": "0x0",
-      "blockHash": "0x8ecc963a387fda72a666a065c82cf78198f6b4aea867c95f78a7d2cb8b56c570",
-      "blockNumber": "0x2",
+      "blockHash": "0x607ee5f7c20513e84efa0d6d9952c9403df9253cccd6ac4d4f942fbb1c7a1f12",
+      "blockNumber": "0x1",
       "gasUsed": "0x257bb",
-      "effectiveGasPrice": "0x342770c1",
+      "effectiveGasPrice": "0x3b9aca01",
       "blobGasPrice": "0x1",
       "from": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
       "to": null,
@@ -40,7 +40,7 @@
   "libraries": [],
   "pending": [],
   "returns": {},
-  "timestamp": 1755769837,
+  "timestamp": 1755766262,
   "chain": 31337,
   "commit": "444f5fc"
 }
